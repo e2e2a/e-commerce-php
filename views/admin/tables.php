@@ -1,13 +1,161 @@
+<?php
+include '../../database/config.php';
+session_start();
+    if (empty($_SESSION['id']) || $_SESSION['id'] != 1) {
+        header("Location: login.php");
+        exit();
+    }
+    if(isset($_POST['create-product'])){
+        $product_name = $_POST['product_name'];
+        $category = $_POST['category'];
+        $price = $_POST['price'];
+        $description = $_POST['description'];
+        $width = $_POST['width'];
+        $height = $_POST['height'];
+        $depth = $_POST['depth'];
+        $weight = $_POST['weight'];
+        $quantity = $_POST['quantity'];
+
+
+
+        // File upload handling
+    $uploadDir = '../../public/img/product/'; // Change this to your desired upload directory
+    $uploadedFile = $_FILES['images']['tmp_name'];
+    $images = $_FILES['images']['name'];
+    $targetFile = $uploadDir . basename($images);
+
+    // Check if file is uploaded successfully
+    if (move_uploaded_file($uploadedFile, $targetFile)) {
+        // File was uploaded successfully, continue with database insert
+        $sql = "INSERT INTO products(product_name, category, price, description, images, width, height, depth, weight, quantity) 
+                VALUES (:a, :b,:c,:d,:e,:f,:g,:h,:i,:j)";
+        $stmt = $con->prepare($sql);
+        $stmt->bindParam(':a', $product_name);
+        $stmt->bindParam(':b', $category);
+        $stmt->bindParam(':c', $price);
+        $stmt->bindParam(':d', $description);
+        $stmt->bindParam(':e', $images);
+        $stmt->bindParam(':f', $width);
+        $stmt->bindParam(':g', $height);
+        $stmt->bindParam(':h', $depth);
+        $stmt->bindParam(':i', $weight);
+        $stmt->bindParam(':j', $quantity);
+
+        if ($stmt->execute()) {
+            echo '<script> alert("Product created successfully.") </script>';
+        } else {
+            echo '<script> alert("Error creating product.") </script>';
+        }
+    } else {
+        echo 'Error uploading file.';
+    }
+}
+
+include '../../database/config.php';
+if(isset($_POST['create-user'])){
+    $username = $_POST['username'];
+    $fullname = $_POST['fullname'];
+    $email = $_POST['email'];
+    $birthdate = $_POST['birthdate'];
+    $password = $_POST['password'];
+    
+    //verifying the unique email
+    
+    $stmt = $con->prepare("SELECT email From users WHERE email=:a");
+    $stmt->bindParam(':a', $email);
+    $stmt->execute();
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $num_rows = count($results);
+    if($num_rows !=0) {
+        echo "<script>alert('Email is already used!'); </script>";
+        
+    } else {
+        $sql = "INSERT INTO users(username,fullname,email,birthdate,password) VALUES(:a,:b,:c,:d,:e)";
+        $stmt = $con->prepare($sql);
+        $stmt->bindParam(':a', $username);
+        $stmt->bindParam(':b', $fullname);
+        $stmt->bindParam(':c', $email);
+        $stmt->bindParam(':d', $birthdate);
+        $stmt->bindParam(':e', $password);
+        if($stmt->execute()) {
+            echo "<script>alert('Registration Success!'); </script>";
+        } else {
+            echo "<script>alert('Registration Failed!'); </script>";
+        }
+    }
+}
+
+$sql = "SELECT * FROM products";
+$stmt = $con->prepare($sql);
+$stmt->execute();
+$result_product = $stmt->fetchAll();
+
+$sql = "SELECT * FROM users";
+$stmt = $con->prepare($sql);
+$stmt->execute();
+$result_user = $stmt->fetchAll();
+if (isset($_POST['delete'])) {
+    $deleteId = $_POST['delete'];  
+    if (!isset($_POST['delete_type'])) {
+        echo "Delete type not set";
+        exit;
+    }
+    switch ($_POST['delete_type']) {
+        case 'users':
+            $stmt = $con->prepare("DELETE FROM users WHERE user_id=:deleteId");
+            break;
+        case 'products':
+            $stmt = $con->prepare("DELETE FROM products WHERE product_id=:deleteId");
+            break;
+        default:
+            echo "Invalid delete type";
+            exit;
+    }
+    $stmt->bindParam(':deleteId', $deleteId);
+    if ($stmt->execute()){
+            echo '<script>alert("Record deleted successfully.");</script>';
+            echo '<script>
+                    setTimeout(function(){
+                        window.location.href = "tables.php";
+                    }, 250); // Delay of 250 milliseconds (0.25 second)
+                </script>';
+            exit;
+        } else {
+            echo "Error deleting record: " . $con->error;
+        } 
+    
+}
+if (isset($_POST['edit'])) {
+    $editId = $_POST['edit'];
+    if (!isset($_POST['delete_type'])) {
+        echo "Delete type not set";
+        exit;
+    }
+    switch ($_POST['delete_type']) {
+        case 'users':
+            header("Location: ../edit.php?user_id=" . $editId);
+            break;
+        case 'products':
+            header("Location: ../edit-product.php?products_id=" . $editId);
+            break;
+        
+        default:
+            echo "Invalid delete type";
+            exit;
+    }
+    
+}
+
+?>
+
+
+
 <!DOCTYPE html>
 <html lang="zxx" class="no-js">
 
 <head>
     <!-- Mobile Specific Meta -->
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <!-- Favicon-->
-    <link rel="shortcut icon" href="../../public/img/fav.png">
-    <!-- Author Meta -->
-    <meta name="author" content="CodePixar">
     <!-- Meta Description -->
     <meta name="description" content="">
     <!-- Meta Keyword -->
@@ -15,7 +163,7 @@
     <!-- meta character set -->
     <meta charset="UTF-8">
     <!-- Site Title -->
-    <title>Karma Shop</title>
+    <title>Administrator</title>
 
     <!--
             CSS
@@ -150,105 +298,82 @@
                     </div>
                 </div>
             </div>
+            <!--USERS TABLES-->
             <div class="section-top-border mb-5">
-                <h3 class="mb-30">Table</h3>
+                <h3 class="mb-30">Users Table</h3>
                 <div class="progress-table-wrap">
-                    <div class="progress-table">
-                        <div class="table-head">
-                            <div class="serial">#</div>
-                            <div class="country">Countries</div>
-                            <div class="visit">Visits</div>
-                            <div class="percentage">Percentages</div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">01</div>
-                            <div class="country"> <img src="../../public/img/elements/f1.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-1" role="progressbar" style="width: 80%"
-                                        aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">02</div>
-                            <div class="country"> <img src="../../public/img/elements/f2.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-2" role="progressbar" style="width: 30%"
-                                        aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">03</div>
-                            <div class="country"> <img src="../../public/img/elements/f3.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-3" role="progressbar" style="width: 55%"
-                                        aria-valuenow="55" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">04</div>
-                            <div class="country"> <img src="../../public/img/elements/f4.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-4" role="progressbar" style="width: 60%"
-                                        aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">05</div>
-                            <div class="country"> <img src="../../public/img/elements/f5.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-5" role="progressbar" style="width: 40%"
-                                        aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">06</div>
-                            <div class="country"> <img src="../../public/img/elements/f6.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-6" role="progressbar" style="width: 70%"
-                                        aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">07</div>
-                            <div class="country"> <img src="../../public/img/elements/f7.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-7" role="progressbar" style="width: 30%"
-                                        aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-row">
-                            <div class="serial">08</div>
-                            <div class="country"> <img src="../../public/img/elements/f8.jpg" alt="flag">Canada</div>
-                            <div class="visit">645032</div>
-                            <div class="percentage">
-                                <div class="progress">
-                                    <div class="progress-bar color-8" role="progressbar" style="width: 60%"
-                                        aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <?php
+                        if($result_user > 0) {
+                            echo '<div class="progress-table">';
+                            echo '<div class="table-head">
+                            <div class="serial">Id</div>
+                            <div class="visit">username</div>
+                            <div class="visit">fullname</div>
+                            <div class="visit">email</div>
+                            <div class="visit">birthdate</div>
+                            <div class="visit ">Actions</div>
+                        </div>';
+                        foreach ($result_user as $row){
+                            echo '<div class="table-row ">';
+                            echo '<div class="serial">'. $row["user_id"] . '</div>';
+                            echo '<div class="visit">'. $row["username"] . '</div>';
+                            echo '<div class="visit">'. $row["fullname"] . '</div>';
+                            echo '<div class="visit">'. $row["email"] . '</div>';
+                            echo '<div class="visit">'. $row["birthdate"] . '</div>';
+                            echo "<div class='visit'>
+                                    <form method='post'>
+                                        <div class='btn-group' role='group' >
+                                        <button type='submit' name='edit' class='btn btn-primary' value='" . $row["user_id"] . "'><i class='fa fa-pencil-square-o' aria-hidden='true'></i></button>
+                                        <input type='hidden' name='delete_type' value='users'>
+                                        <button type='submit' name='delete' class='btn btn-danger' value='" . $row["user_id"] . "'><i class='fa fa-trash' aria-hidden='true'></i></button>
+                                        </div>
+                                    </form>
+                                </div>";
+                            echo '</div>';
+                        }
+                        echo '</div>';
+                        }
+                    ?>                 
+                </div>
+            </div>
+            <!--PRODUCT TABLES-->
+            <div class="section-top-border mb-5">
+                <h3 class="mb-30">Products Table</h3>
+                <div class="progress-table-wrap">
+                    <?php
+                        if($result_product > 0) {
+                            echo '<div class="progress-table">';
+                            echo '<div class="table-head">
+                            <div class="serial">Id</div>
+                            <div class="country">images</div>
+                            <div class="visit">product_name</div>
+                            <div class="visit">category</div>
+                            <div class="visit">price</div>
+                            <div class="visit">quantity</div>
+                            <div class="visit ">Actions</div>
+                        </div>';
+                        foreach ($result_product as $row){
+                            echo '<div class="table-row ">';
+                            echo '<div class="serial">'. $row["product_id"] . '</div>';
+                            echo '<div class="country"> <img class="img-fluid img-thumbnail" style="width: 100px; height: 100px;" src="../../public/img/product/' . $row['images'] .'" alt=""></div>';
+                            echo '<div class="visit">'. $row["product_name"] . '</div>';
+                            echo '<div class="visit">'. $row["category"] . '</div>';
+                            echo '<div class="visit">'. $row["price"] . '</div>';
+                            echo '<div class="visit">'. $row["quantity"] . '</div>';
+                            echo "<div class='visit'>
+                                    <form method='post'>
+                                        <div class='btn-group' role='group' >
+                                        <button type='submit' name='edit' class='btn btn-primary' value='" . $row["product_id"] . "'><i class='fa fa-pencil-square-o' aria-hidden='true'></i></button>
+                                        <input type='hidden' name='delete_type' value='products'>
+                                        <button type='submit' name='delete' class='btn btn-danger' value='" . $row["product_id"] . "'><i class='fa fa-trash' aria-hidden='true'></i></button>
+                                        </div>
+                                    </form>
+                                </div>";
+                            echo '</div>';
+                        }
+                        echo '</div>';
+                        }
+                    ?>                 
                 </div>
             </div>
 
@@ -257,163 +382,76 @@
                 <div class="row">
                     <div class="col-lg-12 col-md-12 mb-5">
                         <h3 class="mb-30">Create Users</h3>
-                        <form action="#">
+                        <form action="#" class="contact_form" action="" method="post">
                             <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="First Name"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'First Name'" required
-                                    class="single-input">
+                                <input type="text" name="username" placeholder="Username" required class="single-input">
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="last_name" placeholder="Last Name"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Last Name'" required
-                                    class="single-input">
+                                <input type="text" name="fullname" placeholder="Full Name" required class="single-input">
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="last_name" placeholder="Last Name"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Last Name'" required
-                                    class="single-input">
+                                <input type="email" name="email" placeholder="Email Address" required class="single-input">
                             </div>
                             <div class="mt-10">
-                                <input type="email" name="EMAIL" placeholder="Email address"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Email address'" required
-                                    class="single-input">
-                            </div>
-                            <div class="input-group-icon mt-10">
-                                <div class="icon"><i class="fa fa-thumb-tack" aria-hidden="true"></i></div>
-                                <input type="text" name="address" placeholder="Address" onfocus="this.placeholder = ''"
-                                    onblur="this.placeholder = 'Address'" required class="single-input">
-                            </div>
-                            <div class="input-group-icon mt-10">
-                                <div class="icon"><i class="fa fa-plane" aria-hidden="true"></i></div>
-                                <div class="form-select" id="default-select"">
-											<select>
-												<option value=" 1">City</option>
-                                    <option value="1">Dhaka</option>
-                                    <option value="1">Dilli</option>
-                                    <option value="1">Newyork</option>
-                                    <option value="1">Islamabad</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="input-group-icon mt-10">
-                                <div class="icon"><i class="fa fa-globe" aria-hidden="true"></i></div>
-                                <div class="form-select" id="default-select"">
-											<select>
-												<option value=" 1">Country</option>
-                                    <option value="1">Bangladesh</option>
-                                    <option value="1">India</option>
-                                    <option value="1">England</option>
-                                    <option value="1">Srilanka</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="mt-10">
-                                <textarea class="single-textarea" placeholder="Message" onfocus="this.placeholder = ''"
-                                    onblur="this.placeholder = 'Message'" required></textarea>
-                            </div>
-                            <!-- For Gradient Border Use -->
-                            <!-- <div class="mt-10">
-										<div class="primary-input">
-											<input id="primary-input" type="text" name="first_name" placeholder="Primary color" onfocus="this.placeholder = ''" onblur="this.placeholder = 'Primary color'">
-											<label for="primary-input"></label>
-										</div>
-									</div> -->
-                            <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="Primary color"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Primary color'" required
-                                    class="single-input-primary">
+                                <input type="date" name="birthdate" placeholder="Birthdate" required class="single-input">
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="Accent color"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Accent color'" required
-                                    class="single-input-accent">
+                                <input type="password" name="password" placeholder="Password" required class="single-input">
                             </div>
-                            <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="Secondary color"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Secondary color'"
-                                    required class="single-input-secondary">
+                            <div class="col-md-12 text-center">
+                                <button type="submit" value="submit" name="create-user" class="primary-btn e-large mt-3">Submit Now</button>
                             </div>
                         </form>
                     </div>
                     <div class="col-lg-12 col-md-12 mb-5">
                         <h3 class="mb-30">Create Product</h3>
-                        <form action="#">
+                        <form class="contact_form" action="" method="post" enctype="multipart/form-data">
                             <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="First Name"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'First Name'" required
-                                    class="single-input">
+                                <input type="text" name="product_name" placeholder="Product Name" required class="single-input-primary">
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="last_name" placeholder="Last Name"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Last Name'" required
-                                    class="single-input">
+                                <input type="number" name="price" placeholder="Price" required class="single-input-primary">
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="last_name" placeholder="Last Name"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Last Name'" required
-                                    class="single-input">
-                            </div>
-                            <div class="mt-10">
-                                <input type="email" name="EMAIL" placeholder="Email address"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Email address'" required
-                                    class="single-input">
+                                <input type="int" name="quantity" placeholder="Quantity"  required class="single-input-primary">
                             </div>
                             <div class="input-group-icon mt-10">
-                                <div class="icon"><i class="fa fa-thumb-tack" aria-hidden="true"></i></div>
-                                <input type="text" name="address" placeholder="Address" onfocus="this.placeholder = ''"
-                                    onblur="this.placeholder = 'Address'" required class="single-input">
-                            </div>
-                            <div class="input-group-icon mt-10">
-                                <div class="icon"><i class="fa fa-plane" aria-hidden="true"></i></div>
-                                <div class="form-select" id="default-select"">
-											<select>
-												<option value=" 1">City</option>
-                                    <option value="1">Dhaka</option>
-                                    <option value="1">Dilli</option>
-                                    <option value="1">Newyork</option>
-                                    <option value="1">Islamabad</option>
+                            <div class="icon"><i class="fa fa-thumb-tack" aria-hidden="true"></i></div>
+                                <div class="form-select" id="default-select">
+                                    <select name="category">
+                                        <option value="" disabled selected>Category</option>
+                                        <option value="Sneakers">Sneakers</option>
+                                        <option value="Ballet flats">Ballet flats</option>
+                                        <option value="Kitten heels">Kitten heels</option>
+                                        <option value="Sandals">Sandals</option>
+                                        <option value="Beach Shoes">Beach Shoes</option>
+                                        <option value="Flip flops">Flip flops</option>
+                                        <option value="Hiking boots">Hiking boots</option>
+                                        <option value="Moccasin">Moccasin</option>
+                                        <option value="Platform shoe">Platform shoe</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="input-group-icon mt-10">
-                                <div class="icon"><i class="fa fa-globe" aria-hidden="true"></i></div>
-                                <div class="form-select" id="default-select"">
-											<select>
-												<option value=" 1">Country</option>
-                                    <option value="1">Bangladesh</option>
-                                    <option value="1">India</option>
-                                    <option value="1">England</option>
-                                    <option value="1">Srilanka</option>
-                                    </select>
-                                </div>
-                            </div>
-
                             <div class="mt-10">
-                                <textarea class="single-textarea" placeholder="Message" onfocus="this.placeholder = ''"
-                                    onblur="this.placeholder = 'Message'" required></textarea>
-                            </div>
-                            <!-- For Gradient Border Use -->
-                            <!-- <div class="mt-10">
-										<div class="primary-input">
-											<input id="primary-input" type="text" name="first_name" placeholder="Primary color" onfocus="this.placeholder = ''" onblur="this.placeholder = 'Primary color'">
-											<label for="primary-input"></label>
-										</div>
-									</div> -->
-                            <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="Primary color"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Primary color'" required
-                                    class="single-input-primary">
+                                <textarea class="single-textarea single-input-primary" name="description" placeholder="Description" required></textarea>
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="Accent color"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Accent color'" required
-                                    class="single-input-accent">
+                                <input type="text" name="width" placeholder="Width" required class="single-input-primary">
                             </div>
                             <div class="mt-10">
-                                <input type="text" name="first_name" placeholder="Secondary color"
-                                    onfocus="this.placeholder = ''" onblur="this.placeholder = 'Secondary color'"
-                                    required class="single-input-secondary">
+                                <input type="text" name="height" placeholder="Height" required class="single-input-primary">
+                            </div>
+                            <div class="mt-10">
+                                <input type="text" name="depth" placeholder="Depth" required class="single-input-primary">
+                            </div>
+                            <div class="mt-10">
+                                <input type="text" name="weight" placeholder="Weight" required class="single-input-primary">
+                            </div>
+                            <div class="mt-10">
+                                <input type="file" name="images"  required class="single-input-primary">
+                            </div>
+                            <div class="col-md-12 text-center">
+                                <button type="submit" value="submit" name="create-product" class="primary-btn e-large mt-3">Submit Now</button>
                             </div>
                         </form>
                     </div>
