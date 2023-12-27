@@ -38,28 +38,29 @@
 									<li class="nav-item"><a class="nav-link" href="single-blog.php">Blog Details</a></li>
 								</ul>
 							</li>
-							<li class="nav-item submenu dropdown <?php echo (in_array($current_page, ['login.php', 'tracking.php', 'elements.php'])) ? 'active' : ''; ?>">
-								<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-								 aria-expanded="false">Pages</a>
-								<ul class="dropdown-menu">
-									<li class="nav-item active"><a class="nav-link" href="login.php">Login</a></li>
-									<li class="nav-item"><a class="nav-link" href="tracking.php">Tracking</a></li>
-									<li class="nav-item"><a class="nav-link" href="elements.php">Elements</a></li>
-								</ul>
-							</li>
+							
 							
 							<li class="nav-item <?php echo ($current_page === 'contact.php') ? 'active' : ''; ?>"><a class="nav-link" href="contact.php">Contact</a></li>
 							<?php
 								if(isset($_SESSION['id'])){
-									echo '<li class="nav-item submenu dropdown">
-									<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-									 aria-expanded="false"> PROFILE </a>
-									<ul class="dropdown-menu">
-										<li class="nav-item"><a class="nav-link" href="edit-user.php">Edit Profile</a></li>
-										<li class="nav-item"><a class="nav-link" href="actions/logout.php">Logout</a></li>
-									</ul>
-								</li>';
+									echo '<li class="nav-item submenu dropdown ' . (in_array($current_page, ["edit.php"]) ? 'active' : '') . '">
+											<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"> PROFILE </a>
+											<ul class="dropdown-menu">
+												<li class="nav-item"><a class="nav-link" href="edit.php">Edit Profile</a></li>
+												<li class="nav-item"><a class="nav-link" href="actions/logout.php">Logout</a></li>
+											</ul>
+										</li>';
+								} else{
+									echo '<li class="nav-item submenu dropdown' . (in_array($current_page, ["login.php", "register.php"]) ? 'active' : '') . '">
+										<a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+										aria-expanded="false">Login</a>
+										<ul class="dropdown-menu">
+											<li class="nav-item active"><a class="nav-link" href="login.php">Login</a></li>
+											<li class="nav-item"><a class="nav-link" href="register.php">Create Account</a></li>
+										</ul>
+									</li>';
 								}
+								
 							?>
 						</ul>
 						<ul class="nav navbar-nav navbar-right">
